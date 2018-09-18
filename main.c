@@ -20,7 +20,7 @@ enum
 };
 
 extern unsigned char  qmaX981_init(void);
-extern void qma6981_read_xyz(int16_t raw[3]);
+extern void qma6981_read_xyz(void);
 extern unsigned char qmp6988_init(void);
 extern void qma6988_calc_press(void);
 
@@ -211,7 +211,7 @@ void i2c_config(uint16_t addr)
 #if !defined(QST_SW_IIC)
 	CLK_PeripheralClockConfig(CLK_PERIPHERAL_I2C,ENABLE);	
 	I2C_DeInit();
-	I2C_Init(100000, addr, I2C_DUTYCYCLE_2, I2C_ACK_CURR, I2C_ADDMODE_7BIT, 16);
+	I2C_Init(400000, addr, I2C_DUTYCYCLE_2, I2C_ACK_CURR, I2C_ADDMODE_7BIT, 16);
 	I2C_Cmd(ENABLE);
 #endif
 }
@@ -243,7 +243,6 @@ void main( void )
 {
 	uint8_t chip_id = 0;
 	uint8_t device_type = 0;
-	int16_t raw_data[3];
 
 	sys_init();
 
@@ -278,7 +277,7 @@ void main( void )
 		qst_run_count++;
 		if(device_type & DEVICE_ACC)
 		{
-			qma6981_read_xyz(raw_data);
+			qma6981_read_xyz();
 		}
 		
 		if(device_type & DEVICE_PRESS)

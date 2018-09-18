@@ -303,7 +303,7 @@ void qma6988_calc_press(void)
 	//compensation pressure, Unit Pa
 	g_qmp6988.pressure = b00+bt1*Tr+bp1*P_read+b11*Tr*P_read+bt2*Tr*Tr+bp2*P_read*P_read+b12*P_read*Tr*Tr+b21*P_read*P_read*Tr+bp3*P_read*P_read*P_read;
 	//g_qmp6988.elevation = ((pow((101.325/pressure), 1/5.257)-1)*(tempearture+273.15))/0.0065;
-	qst_printf("press %f %f \n", g_qmp6988.temperature, g_qmp6988.pressure);
+	qst_printf("pre %f %f\n", g_qmp6988.pressure, g_qmp6988.temperature);
 	if(g_qmp6988.power_mode == QMP6988_FORCED_MODE)
 	{	
 		qmp6988_set_power_mode(QMP6988_FORCED_MODE);
