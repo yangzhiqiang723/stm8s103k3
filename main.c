@@ -19,10 +19,19 @@ enum
 	DEVICE_MAX = 0xff
 };
 
-extern unsigned char  qmaX981_init(void);
+#if defined(QST_CONFIG_QMAX981)
+extern uint8_t qmaX981_init(void);
 extern void qma6981_read_xyz(void);
-extern unsigned char qmp6988_init(void);
+#endif
+#if defined(QST_CONFIG_QMP6988)
+extern uint8_t qmp6988_init(void);
 extern void qma6988_calc_press(void);
+#endif
+#if defined(QST_CONFIG_QMCX983)
+extern uint8_t qmcX983_init(void);
+extern void qmcX983_read_xyz(void);
+#endif
+
 
 #define QST_UART_DEBUG
 
@@ -71,7 +80,7 @@ void ftoa(uint8_t *buf, float i)
 	int32_t i_data;
 	uint8_t length=0;
 
-	if(i <= 0.000001f)		
+	if((i>=0.000001f) && (i<=0.000001f))		
 	{
 	   *buf++ = '0'; 
 	   *buf++ = '.'; 
@@ -248,45 +257,52 @@ void main( void )
 
 	RxTxbuf[0] = 0;
 	RxTxLen = 0;
-	if((chip_id=qmaX981_init()))
+#if defined(QST_CONFIG_QMAX981)
+	if((chip_id=qmaX981_init())!=0)
 	{
 		device_type |= DEVICE_ACC;
 		qst_send_string("qmaX981 OK! \n");
 	}
-	if((chip_id=qmp6988_init()))
+#endif
+#if defined(QST_CONFIG_QMP6988)
+	if((chip_id=qmp6988_init())!=0)
 	{
 		device_type |= DEVICE_PRESS;
 		qst_send_string("qmp6988 OK! \n");
 	}
-/*	
-	if((chip_id == 0xb0)||(chip_id == 0xe0))	// qmaX981
+#endif
+#if defined(QST_CONFIG_QMCX983)
+	if((chip_id=qmcX983_init())!=0)
 	{
-		device_type |= DEVICE_ACC;
+		device_type |= DEVICE_MAG;
+		qst_send_string("qmcX983 OK! \n");
 	}
-	else if(chip_id == 0x5c)	// qmp6988
-	{
-		device_type |= DEVICE_PRESS;
-	}
-	else if(chip_id == 0xfc)	// fis2108
-	{
-		device_type |= DEVICE_GYRO;
-	}
-*/
+#endif
 	while(1)
 	{
 		qst_run_count++;
+#if defined(QST_CONFIG_QMAX981)
 		if(device_type & DEVICE_ACC)
 		{
 			qma6981_read_xyz();
 		}
-		
+#endif
+#if defined(QST_CONFIG_QMP6988)
 		if(device_type & DEVICE_PRESS)
 		{
 			qma6988_calc_press();
 		}
+#endif
+#if defined(QST_CONFIG_QMCX983)
+		if(device_type & DEVICE_MAG)
+		{
+			qmcX983_read_xyz();
+		}
+#endif
 		delay_ms(50);
 	}
 }
+
 
 INTERRUPT_HANDLER(UART1_RX_IRQHandler, ITC_IRQ_UART1_RX)
 {

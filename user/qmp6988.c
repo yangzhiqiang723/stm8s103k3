@@ -2,6 +2,7 @@
 #include "stm8s.h"
 #include "qst_i2c.h"
 
+#if defined(QST_CONFIG_QMP6988)
 #define QMP6988_CHIP_ID_REG						0xD1
 #define QMP6988_RESET_REG             			0xE0  /* Device reset register */
 #define QMP6988_CONFIG_REG						0xF1
@@ -312,9 +313,9 @@ void qma6988_calc_press(void)
 }
 
 
-unsigned char qmp6988_init(void)
+uint8_t qmp6988_init(void)
 {
-	unsigned char chip;
+	uint8_t chip;
 
 	qst_iic_read((0x70<<1), 0xd1, &chip, 1);
 	if(chip == 0x5c)
@@ -334,4 +335,5 @@ unsigned char qmp6988_init(void)
 
 	return chip;
 }
+#endif
 

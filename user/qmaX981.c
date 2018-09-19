@@ -2,6 +2,7 @@
 #include "stm8s.h"
 #include "qst_i2c.h"
 
+#if defined(QST_CONFIG_QMAX981)
 #define STEPCOUNTER_SUPPORT
 extern void qst_printf(const char *format, ...);
 
@@ -35,9 +36,9 @@ void qma6981_read_xyz(void)
 	//qst_printf("%s", "read raw data \n");
 }
 
-unsigned char qmaX981_init(void)
+uint8_t qmaX981_init(void)
 {
-	unsigned char chip;
+	uint8_t chip;
 
 	qst_iic_read((0x12<<1), 0x00, &chip, 1);
 	if(chip == 0xb0)
@@ -67,4 +68,5 @@ unsigned char qmaX981_init(void)
 
 	return chip;
 }
+#endif
 
