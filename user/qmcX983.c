@@ -20,8 +20,6 @@ void qmcX983_read_xyz(void)
 	uint8_t reg_data[6];
 	int16_t raw[3];
 
-        qst_iic_read((0x2c<<1), 0x09, &reg_data[0], 1);
-	qst_printf("0x09= %d\n",(int16_t)reg_data[0]);
 	qst_iic_read((0x2c<<1), 0x00, reg_data, 6);
  	raw[0] = (int16_t)((reg_data[1]<<8)|(reg_data[0]));
 	raw[1] = (int16_t)((reg_data[3]<<8)|(reg_data[2]));

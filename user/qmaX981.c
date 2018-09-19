@@ -3,7 +3,7 @@
 #include "qst_i2c.h"
 
 #if defined(QST_CONFIG_QMAX981)
-#define STEPCOUNTER_SUPPORT
+//#define STEPCOUNTER_SUPPORT
 extern void qst_printf(const char *format, ...);
 
 void qma6981_read_xyz(void)

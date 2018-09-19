@@ -5,6 +5,9 @@
 #include "qst_i2c.h"
 #include "delay.h"
 
+//#define STM_IRQ_RX_ENABLE
+#define QST_UART_DEBUG
+
 static u32 qst_run_count = 0;
 uint8_t RxTxbuf[20];
 uint8_t RxTxLen = 0;
@@ -33,7 +36,6 @@ extern void qmcX983_read_xyz(void);
 #endif
 
 
-#define QST_UART_DEBUG
 
 #if defined(QST_UART_DEBUG)
 uint8_t itoa10(uint8_t *buf, int32_t i)
@@ -211,7 +213,11 @@ void uart_config(void)
 	UART1_Init(115200,UART1_WORDLENGTH_8D,UART1_STOPBITS_1,UART1_PARITY_NO,UART1_SYNCMODE_CLOCK_DISABLE,
 		UART1_MODE_TXRX_ENABLE);
 	UART1_Cmd(ENABLE);
+#if defined(STM_IRQ_RX_ENABLE)
 	UART1_ITConfig(UART1_IT_RXNE_OR,ENABLE);
+#else
+	UART1_ITConfig(UART1_IT_RXNE_OR,DISABLE);
+#endif
 }
 
 void i2c_config(uint16_t addr)
@@ -232,9 +238,11 @@ void gpio_config(void)
 	GPIO_Init(GPIOB, GPIO_PIN_4, GPIO_MODE_OUT_PP_HIGH_FAST);	// clk
 	GPIO_Init(GPIOB, GPIO_PIN_5, GPIO_MODE_OUT_OD_HIZ_FAST);	// data
 #else
-  GPIO_Init(GPIOB, GPIO_PIN_4, GPIO_MODE_IN_FL_NO_IT);	// clk
-  GPIO_Init(GPIOB, GPIO_PIN_5, GPIO_MODE_IN_FL_NO_IT);	// data
+	GPIO_Init(GPIOB, GPIO_PIN_4, GPIO_MODE_IN_FL_NO_IT);	// clk
+	GPIO_Init(GPIOB, GPIO_PIN_5, GPIO_MODE_IN_FL_NO_IT);	// data
 #endif
+	GPIO_Init(GPIOD, GPIO_PIN_3, GPIO_MODE_OUT_PP_LOW_SLOW);	// led
+	GPIO_WriteLow(GPIOD, GPIO_PIN_3);
 }
 
 void sys_init(void)
@@ -261,49 +269,56 @@ void main( void )
 	if((chip_id=qmaX981_init())!=0)
 	{
 		device_type |= DEVICE_ACC;
-		qst_send_string("qmaX981 OK! \n");
+		qst_printf("qmaX981 OK! \n");
 	}
 #endif
 #if defined(QST_CONFIG_QMP6988)
 	if((chip_id=qmp6988_init())!=0)
 	{
 		device_type |= DEVICE_PRESS;
-		qst_send_string("qmp6988 OK! \n");
+		qst_printf("qmp6988 OK! \n");
 	}
 #endif
 #if defined(QST_CONFIG_QMCX983)
 	if((chip_id=qmcX983_init())!=0)
 	{
 		device_type |= DEVICE_MAG;
-		qst_send_string("qmcX983 OK! \n");
+		qst_printf("qmcX983 OK! \n");
 	}
 #endif
+
 	while(1)
 	{
 		qst_run_count++;
+		//GPIO_WriteHigh(GPIOD, GPIO_PIN_3);
 #if defined(QST_CONFIG_QMAX981)
 		if(device_type & DEVICE_ACC)
 		{
 			qma6981_read_xyz();
+            delay_ms(20);
 		}
 #endif
 #if defined(QST_CONFIG_QMP6988)
 		if(device_type & DEVICE_PRESS)
 		{
 			qma6988_calc_press();
+            delay_ms(20);
 		}
 #endif
 #if defined(QST_CONFIG_QMCX983)
 		if(device_type & DEVICE_MAG)
 		{
 			qmcX983_read_xyz();
+            delay_ms(10);
 		}
 #endif
-		delay_ms(50);
+		//GPIO_WriteLow(GPIOD, GPIO_PIN_3);
+		delay_ms(20);
 	}
 }
 
 
+#if defined(STM_IRQ_RX_ENABLE)
 INTERRUPT_HANDLER(UART1_RX_IRQHandler, ITC_IRQ_UART1_RX)
 {
 	if(UART1_GetITStatus(UART1_IT_RXNE_OR) != RESET)		// interrupt flag
@@ -325,4 +340,5 @@ INTERRUPT_HANDLER(UART1_RX_IRQHandler, ITC_IRQ_UART1_RX)
 	//	RxTxLen = 0;
 	//}
 }
+#endif
 

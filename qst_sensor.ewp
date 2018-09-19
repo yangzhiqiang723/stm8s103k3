@@ -190,6 +190,7 @@
                     <name>CCDefines</name>
                     <state>QST_CONFIG_QMAX981</state>
                     <state>QST_CONFIG_QMCX983</state>
+                    <state>QST_CONFIG_QMP6988</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
@@ -992,6 +993,9 @@
                 <option>
                     <name>CCDefines</name>
                     <state>NDEBUG</state>
+                    <state>QST_CONFIG_QMAX981</state>
+                    <state>QST_CONFIG_QMP6988</state>
+                    <state>QST_CONFIG_QMCX983</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
