@@ -7,6 +7,11 @@
 
 //#define STM_IRQ_RX_ENABLE
 #define QST_UART_DEBUG
+//#define QST_WRITE_EEPROM
+#if defined(QST_WRITE_EEPROM)
+#include "bsp_eeprom.h"
+#define EEPROM_ADDR               0x4000         //EEPROM addr
+#endif
 
 static u32 qst_run_count = 0;
 uint8_t RxTxbuf[20];
@@ -126,7 +131,7 @@ void qst_printf(const char *format, ...)
 	int8_t *pc;
 	int32_t value;
 	float f_value;
-	uint8_t buf[20];
+	uint8_t buf[50];
 	
 	va_list arg;
 	va_start(arg, format);
@@ -223,7 +228,8 @@ void uart_config(void)
 void i2c_config(uint16_t addr)
 {
 	//hardware i2c
-#if !defined(QST_SW_IIC)
+#if defined(QST_SW_IIC)||defined(QST_SW_IIC_MTK)
+#else
 	CLK_PeripheralClockConfig(CLK_PERIPHERAL_I2C,ENABLE);	
 	I2C_DeInit();
 	I2C_Init(400000, addr, I2C_DUTYCYCLE_2, I2C_ACK_CURR, I2C_ADDMODE_7BIT, 16);
@@ -233,7 +239,7 @@ void i2c_config(uint16_t addr)
 
 void gpio_config(void)
 {
-#if defined(QST_SW_IIC)
+#if defined(QST_SW_IIC)||defined(QST_SW_IIC_MTK)
 	GPIO_DeInit(GPIOB);
 	GPIO_Init(GPIOB, GPIO_PIN_4, GPIO_MODE_OUT_PP_HIGH_FAST);	// clk
 	GPIO_Init(GPIOB, GPIO_PIN_5, GPIO_MODE_OUT_OD_HIZ_FAST);	// data
@@ -241,8 +247,8 @@ void gpio_config(void)
 	GPIO_Init(GPIOB, GPIO_PIN_4, GPIO_MODE_IN_FL_NO_IT);	// clk
 	GPIO_Init(GPIOB, GPIO_PIN_5, GPIO_MODE_IN_FL_NO_IT);	// data
 #endif
-	GPIO_Init(GPIOD, GPIO_PIN_3, GPIO_MODE_OUT_PP_LOW_SLOW);	// led
-	GPIO_WriteLow(GPIOD, GPIO_PIN_3);
+	//GPIO_Init(GPIOD, GPIO_PIN_3, GPIO_MODE_OUT_PP_LOW_SLOW);	// led
+	//GPIO_WriteLow(GPIOD, GPIO_PIN_3);
 }
 
 void sys_init(void)
@@ -252,6 +258,9 @@ void sys_init(void)
 	gpio_config();
 	uart_config();
 	i2c_config(0x12);
+#if defined(QST_WRITE_EEPROM)
+	EEPROM_Initializes();
+#endif
 	delay_init(16);
 	enableInterrupts();
 }
@@ -269,28 +278,31 @@ void main( void )
 	if((chip_id=qmaX981_init())!=0)
 	{
 		device_type |= DEVICE_ACC;
-		qst_printf("qmaX981 OK! \n");
+		qst_printf("qmaX981 OK! chip_id=%d\n",chip_id);
 	}
 #endif
 #if defined(QST_CONFIG_QMP6988)
 	if((chip_id=qmp6988_init())!=0)
 	{
 		device_type |= DEVICE_PRESS;
-		qst_printf("qmp6988 OK! \n");
+		qst_printf("qmp6988 OK! chip_id=%d\n",chip_id);
 	}
 #endif
 #if defined(QST_CONFIG_QMCX983)
 	if((chip_id=qmcX983_init())!=0)
 	{
 		device_type |= DEVICE_MAG;
-		qst_printf("qmcX983 OK! \n");
+		qst_printf("qmcX983 OK!chip_id=%d\n",chip_id);
 	}
 #endif
-
+#if defined(QST_WRITE_EEPROM)
+	EEPROM_ReadNByte(RxTxbuf, EEPROM_ADDR, 20);
+	qst_printf("EEPROM:%s\n", RxTxbuf);
+	delay_ms(200);
+#endif
 	while(1)
 	{
 		qst_run_count++;
-		//GPIO_WriteHigh(GPIOD, GPIO_PIN_3);
 #if defined(QST_CONFIG_QMAX981)
 		if(device_type & DEVICE_ACC)
 		{
@@ -304,6 +316,8 @@ void main( void )
 			qma6988_calc_press();
             delay_ms(20);
 		}
+#else
+		delay_ms(20);
 #endif
 #if defined(QST_CONFIG_QMCX983)
 		if(device_type & DEVICE_MAG)
@@ -311,9 +325,18 @@ void main( void )
 			qmcX983_read_xyz();
             delay_ms(10);
 		}
-#endif
-		//GPIO_WriteLow(GPIOD, GPIO_PIN_3);
+#else
 		delay_ms(20);
+#endif
+		if(device_type == 0)
+		{
+			qst_printf("no sensor\n");
+		  	delay_ms(200);
+		}
+		else
+		{
+			delay_ms(20);
+		}
 	}
 }
 
@@ -329,6 +352,9 @@ INTERRUPT_HANDLER(UART1_RX_IRQHandler, ITC_IRQ_UART1_RX)
 	if(RxTxbuf[RxTxLen] == '\n')
 	{
 		RxTxbuf[RxTxLen] = 0;
+#if defined(QST_WRITE_EEPROM)
+		EEPROM_WriteNByte(RxTxbuf, EEPROM_ADDR, RxTxLen);
+#endif
 		RxTxLen = 0;
 	}
 	else

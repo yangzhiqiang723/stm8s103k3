@@ -1,7 +1,7 @@
 
 #include "stm8s.h"
 #include "qst_i2c.h"
-
+#include "delay.h"
 
 #if defined(QST_SW_IIC)
 #define GPIO_PORT_I2C		GPIOB
@@ -262,6 +262,240 @@ void i2c_NAck(void)
 
 #endif
 
+#if defined(QST_SW_IIC_MTK)
+
+#define GPIO_PORT_I2C		GPIOB
+#define I2C_SCL_PIN			GPIO_PIN_4			/* SCL GPIO */
+#define I2C_SDA_PIN			GPIO_PIN_5			/* SDA GPIO */
+
+#define MS_CLK_PIN_GPIO_MODE
+#define	MS_DATA_PIN_GPIO_MODE
+#define MS_I2C_CLK_OUTPUT			GPIO_Init(GPIO_PORT_I2C, I2C_SCL_PIN, GPIO_MODE_OUT_PP_HIGH_FAST)
+#define MS_I2C_DATA_OUTPUT			GPIO_Init(GPIO_PORT_I2C, I2C_SDA_PIN, GPIO_MODE_OUT_OD_HIZ_FAST)
+#define MS_I2C_DATA_INPUT		   	GPIO_Init(GPIO_PORT_I2C, I2C_SDA_PIN, GPIO_MODE_IN_PU_NO_IT)
+#define MS_I2C_CLK_HIGH				GPIO_WriteHigh(GPIO_PORT_I2C, I2C_SCL_PIN)
+#define MS_I2C_CLK_LOW				GPIO_WriteLow(GPIO_PORT_I2C, I2C_SCL_PIN)
+#define MS_I2C_DATA_HIGH			GPIO_WriteHigh(GPIO_PORT_I2C, I2C_SDA_PIN)
+#define MS_I2C_DATA_LOW				GPIO_WriteLow(GPIO_PORT_I2C, I2C_SDA_PIN)
+#define MS_I2C_GET_BIT				GPIO_ReadInputPin(GPIO_PORT_I2C, I2C_SDA_PIN)
+
+
+//#define SW_i2c_udelay		delay_us
+
+static void SW_i2c_udelay(uint16_t us)
+{
+	//delay_us(5);
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+	asm("nop");
+}
+
+static void SW_i2c_start(void)
+{
+	MS_CLK_PIN_GPIO_MODE;
+	MS_I2C_CLK_OUTPUT;
+
+	MS_DATA_PIN_GPIO_MODE;
+	MS_I2C_DATA_OUTPUT;
+	
+	MS_I2C_DATA_HIGH;
+	MS_I2C_CLK_HIGH;
+	SW_i2c_udelay(40);		//20
+	MS_I2C_DATA_LOW;
+	SW_i2c_udelay(20);		//10
+	MS_I2C_CLK_LOW;
+	SW_i2c_udelay(20);		//10
+}
+
+/******************************************
+	software I2C stop bit
+*******************************************/
+static void SW_i2c_stop(void)
+{
+	MS_I2C_CLK_OUTPUT;
+	MS_I2C_DATA_OUTPUT;
+	
+	SW_i2c_udelay(20);		//10
+	MS_I2C_CLK_HIGH;
+	SW_i2c_udelay(20);		//10
+	MS_I2C_DATA_HIGH;
+}
+
+/******************************************
+	software I2C one clock
+*******************************************/
+static void SW_i2c_one_clk(void)
+{
+	SW_i2c_udelay(10);		//5
+	MS_I2C_CLK_HIGH;
+	SW_i2c_udelay(20);		//10
+	MS_I2C_CLK_LOW;
+	SW_i2c_udelay(10);		//5
+}
+
+/******************************************
+	software I2C read byte with ack
+*******************************************/
+static uint8_t ms_ReadByteAck(void)
+{
+	int8_t i;
+	uint8_t data;
+
+	MS_I2C_DATA_INPUT; 
+	data = 0; 
+	
+	for (i=7; i>=0; i--) 
+	{
+		if (MS_I2C_GET_BIT)
+		{
+			data |= (0x01<<i);
+		}
+		SW_i2c_one_clk();
+	}			                                
+
+	MS_I2C_DATA_OUTPUT;                    
+	MS_I2C_DATA_LOW;                       
+	SW_i2c_one_clk();                         
+
+	return data;
+}
+
+/******************************************
+	software I2C read byte without ack
+*******************************************/
+static uint8_t ms_ReadByteNAck(void)
+{
+	int8_t i;
+	uint8_t data;
+
+	MS_I2C_DATA_INPUT; 
+	data = 0; 
+	
+	for (i=7; i>=0; i--) 
+	{
+		if (MS_I2C_GET_BIT)
+		{
+			data |= (0x01<<i);
+		}
+		SW_i2c_one_clk();
+	}			                                
+
+	MS_I2C_DATA_OUTPUT;                                           
+	MS_I2C_DATA_HIGH;
+	SW_i2c_one_clk();                         
+	
+	return data;
+}
+
+/******************************************
+	software I2C send byte
+*******************************************/
+static void ms_SendByte(uint8_t sData) 
+{
+	int8_t i;
+	MS_I2C_DATA_OUTPUT;       
+	for (i=7; i>=0; i--) 
+	{            
+		if ((sData>>i)&0x01) 
+		{               
+			MS_I2C_DATA_HIGH;	              
+		} 
+		else 
+		{ 
+			MS_I2C_DATA_LOW;                  
+		}
+		SW_i2c_one_clk();                        
+	}
+	MS_I2C_DATA_HIGH;
+}
+/******************************************
+	software I2C check ack bit
+*******************************************/
+static uint8_t ms_ChkAck(void)//
+{
+  	MS_I2C_DATA_HIGH;
+	MS_I2C_DATA_INPUT;
+	SW_i2c_udelay(10);		//5
+	MS_I2C_CLK_HIGH;
+	SW_i2c_udelay(10);		//5
+
+	if(MS_I2C_GET_BIT)		//Non-ack
+	{
+		SW_i2c_udelay(10);	//5
+		MS_I2C_CLK_LOW;
+		SW_i2c_udelay(10);	//5
+		MS_I2C_DATA_OUTPUT;
+		MS_I2C_DATA_LOW;
+		
+		return 0;
+	}
+	else					//Ack
+	{
+		SW_i2c_udelay(10);	//5
+		MS_I2C_CLK_LOW;
+		SW_i2c_udelay(10);	//5
+		MS_I2C_DATA_OUTPUT;
+		MS_I2C_DATA_LOW;
+
+		return 1;
+	}
+}
+
+/******************************************
+	software I2C restart bit
+*******************************************/
+static void ms_Restart(void)
+{
+	MS_I2C_CLK_OUTPUT;
+	MS_I2C_DATA_OUTPUT;
+
+	SW_i2c_udelay(40);
+	MS_I2C_DATA_HIGH;
+	SW_i2c_udelay(20);		//10
+	MS_I2C_CLK_HIGH;
+	SW_i2c_udelay(40);
+	MS_I2C_DATA_LOW;
+	SW_i2c_udelay(20);		//10
+	MS_I2C_CLK_LOW;
+	SW_i2c_udelay(20);		//10
+}
+
+#endif
+
 
 uint8_t qst_iic_write(uint8_t slave,uint8_t Addr, uint8_t Data)
 {
@@ -283,6 +517,32 @@ uint8_t qst_iic_write(uint8_t slave,uint8_t Addr, uint8_t Data)
 		return 0;
 	}
 	i2c_Stop();
+
+	return 1;
+#elif defined(QST_SW_IIC_MTK)
+	SW_i2c_start(); 					//start bit
+	ms_SendByte(slave);		//slave address|write bit
+	if(0 == ms_ChkAck())		//check Ack bit
+	{
+		//TO_DO: display check ack fail when send write id
+		SW_i2c_stop();
+		return 0;
+	}
+	ms_SendByte(Addr);				//send RegAddr
+	if(0 == ms_ChkAck())		//check Ack bit
+	{
+		//TO_DO: display check ack fail when send RegAddr
+		SW_i2c_stop();
+		return 0;
+	}
+	ms_SendByte(Data);					//send parameter
+	if(0 == ms_ChkAck())
+	{
+		//TO_DO: display check ack fail when send data
+		SW_i2c_stop();
+		return 0;
+	}
+	SW_i2c_stop();						//stop bit
 
 	return 1;
 #else
@@ -345,6 +605,47 @@ uint8_t qst_iic_read(uint8_t slave, uint8_t Addr, uint8_t *pData, uint16_t Lengt
 	}
 	*pData=i2c_ReadByte(0);
 	i2c_Stop();
+
+	return 1;
+#elif defined(QST_SW_IIC_MTK)
+	uint8_t* Data_ptr;
+	uint16_t i;
+
+	Data_ptr = pData;
+
+	SW_i2c_start(); 					//start bit
+	ms_SendByte(slave);		//slave address|write bit
+	if(0 == ms_ChkAck())		//check Ack bit
+	{
+		//TO_DO: display ack check fail when send write id		
+		SW_i2c_stop();
+		return 0;
+	}
+		
+	ms_SendByte(Addr);				//send RegAddr
+	if(0 == ms_ChkAck())		//check Ack bit
+	{
+		//TO_DO: display ack check fail when send RegAddr		
+		SW_i2c_stop();
+		return 0;
+	}
+
+	ms_Restart();						//restart bit
+	ms_SendByte(slave+1);		//slave address|read bit
+	if(0 == ms_ChkAck())
+	{
+		//TO_DO: display ack check fail when send read id		
+		SW_i2c_stop();
+		return 0;
+	}
+	for(i=Length; i>1; i--)
+	{
+		*Data_ptr = ms_ReadByteAck();	//read byte with ack
+		Data_ptr++;
+	}
+	*Data_ptr = ms_ReadByteNAck();		//read byte with non-ack to stop reading
+	SW_i2c_stop();						//stop bit
+	//TO_DO: add debug code to display the data received
 
 	return 1;
 #else

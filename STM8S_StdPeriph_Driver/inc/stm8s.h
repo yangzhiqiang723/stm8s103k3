@@ -144,10 +144,12 @@
     defined (STM8S903) || defined (STM8AF626x)
 /*!< Used with memory Models for code smaller than 64K */
  #define PointerAttr NEAR
+ #define MemoryAddressCast uint16_t
 #else /* STM8S208 or STM8S207 or STM8AF62Ax or STM8AF52Ax */
 /*!< Used with memory Models for code higher than 64K */
  #define PointerAttr FAR
-#endif /* STM8S105 or STM8S103 or STM8S003 or STM8S903 or STM8AF626x */
+ #define MemoryAddressCast uint32_t
+#endif /* STM8S105 or STM8S103 or STM8S003 or STM8S903 or STM8AF626x or STM8AF622x */
 
 /* Uncomment the line below to enable the FLASH functions execution from RAM */
 #if !defined (RAM_EXECUTION)

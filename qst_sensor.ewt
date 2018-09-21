@@ -2139,6 +2139,12 @@
     <group>
         <name>USER</name>
         <file>
+            <name>$PROJ_DIR$\user\bsp_eeprom.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\user\bsp_timer.c</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\user\delay.c</name>
         </file>
         <file>
